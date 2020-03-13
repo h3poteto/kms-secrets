@@ -25,6 +25,9 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	secretv1beta1 "github.com/h3poteto/kms-secrets/api/v1beta1"
+	"github.com/h3poteto/kms-secrets/controllers"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -36,6 +39,7 @@ var (
 func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
 
+	_ = secretv1beta1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -62,6 +66,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err = (&controllers.KMSSecretReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("KMSSecret"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "KMSSecret")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")

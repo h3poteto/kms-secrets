@@ -1,3 +1,7 @@
 domain: h3poteto.dev
 repo: github.com/h3poteto/kms-secrets
+resources:
+- group: secret
+  kind: KMSSecret
+  version: v1beta1
 version: "2"
