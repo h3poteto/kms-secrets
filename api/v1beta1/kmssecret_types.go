@@ -20,22 +20,25 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+// SecretTemplateSpec defines the secret metadata
+type SecretTemplateSpec struct {
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+}
 
 // KMSSecretSpec defines the desired state of KMSSecret
 type KMSSecretSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// +optional
+	Template SecretTemplateSpec `json:"template,omitempty"`
 
-	// Foo is an example field of KMSSecret. Edit KMSSecret_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	EncryptedData map[string][]byte `json:"encryptedData"`
 }
 
 // KMSSecretStatus defines the observed state of KMSSecret
 type KMSSecretStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	SecretsSum string `json:"secretsSum,omitempty"`
 }
 
 // +kubebuilder:object:root=true

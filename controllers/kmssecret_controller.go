@@ -20,7 +20,11 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -30,18 +34,55 @@ import (
 // KMSSecretReconciler reconciles a KMSSecret object
 type KMSSecretReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log      logr.Logger
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=secret.h3poteto.dev,resources=kmssecrets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=secret.h3poteto.dev,resources=kmssecrets/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups="",resources=secret,verbs=get;list;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
 func (r *KMSSecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
-	_ = r.Log.WithValues("kmssecret", req.NamespacedName)
+	ctx := context.Background()
+	log := r.Log.WithValues("kmssecret", req.NamespacedName)
 
-	// your logic here
+	log.Info("fetching KMSSecret resources")
+	kind := secretv1beta1.KMSSecret{}
+	if err := r.Client.Get(ctx, req.NamespacedName, &kind); err != nil {
+		log.Error(err, "failed to get KMSSecret resources")
+
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// TODO: clean up owned resources
+
+	log = log.WithValues("secret_name", kind.Spec.Template.ObjectMeta.Name)
+
+	log.Info("checking if an existing Secret exists for this resource")
+	secret := v1.Secret{}
+	err := r.Client.Get(ctx, client.ObjectKey{Namespace: kind.Namespace, Name: kind.Spec.Template.ObjectMeta.Name}, &secret)
+	if apierrors.IsNotFound(err) {
+		log.Info("could not find existing Secret for KMSSecret, creating one...")
+
+		secret = *buildSecret(kind)
+		if err := r.Client.Create(ctx, &secret); err != nil {
+			log.Error(err, "failed to create Secret resource")
+			return ctrl.Result{}, err
+		}
+
+		r.Recorder.Eventf(&kind, v1.EventTypeNormal, "Created Secret %q", secret.Name)
+		log.Info("created Secret resource for KMSSecret")
+		return ctrl.Result{}, nil
+	}
+	if err != nil {
+		log.Error(err, "failed to get Secret for KMSSecret resource")
+		return ctrl.Result{}, err
+	}
+	// TODO: sync state
+
+	log.Info("resource status synced")
 
 	return ctrl.Result{}, nil
 }
@@ -49,5 +90,19 @@ func (r *KMSSecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 func (r *KMSSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&secretv1beta1.KMSSecret{}).
+		Owns(&v1.Secret{}).
 		Complete(r)
+}
+
+func buildSecret(kind secretv1beta1.KMSSecret) *v1.Secret {
+	secret := v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            kind.Spec.Template.ObjectMeta.Name,
+			Namespace:       kind.Namespace,
+			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(&kind, secretv1beta1.GroupVersion.WithKind("KMSSecret"))},
+		},
+		Data: kind.Spec.EncryptedData,
+		Type: v1.SecretTypeOpaque,
+	}
+	return &secret
 }

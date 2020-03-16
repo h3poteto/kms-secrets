@@ -67,9 +67,10 @@ func main() {
 	}
 
 	if err = (&controllers.KMSSecretReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("KMSSecret"),
-		Scheme: mgr.GetScheme(),
+		Client:   mgr.GetClient(),
+		Log:      ctrl.Log.WithName("controllers").WithName("KMSSecret"),
+		Recorder: mgr.GetEventRecorderFor("mks-secret"),
+		Scheme:   mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "KMSSecret")
 		os.Exit(1)
