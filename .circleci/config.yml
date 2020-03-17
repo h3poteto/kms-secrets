@@ -1,0 +1,23 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: h3poteto/kubebuilder:2.3.0
+    working_directory: /go/src/github.com/h3poteto/kms-secrets
+    steps:
+      - checkout
+      - restore_cache:
+          name: Restore cache
+          keys:
+            - mod-{{ arch }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+      - run:
+          name: Install
+          command: go mod download
+      - save_cache:
+          name: Save cache
+          key: mod-{{ arch }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+          paths:
+            - /go/pkg/mod
+      - run:
+          name: Test
+          command: ginkgo -r ./
