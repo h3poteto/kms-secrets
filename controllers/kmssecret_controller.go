@@ -142,6 +142,8 @@ func buildSecret(kind secretv1beta1.KMSSecret, decryptedData map[string][]byte) 
 			Name:            kind.Name,
 			Namespace:       kind.Namespace,
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(&kind, secretv1beta1.GroupVersion.WithKind("KMSSecret"))},
+			Labels:          kind.Spec.Template.GetLabels(),
+			Annotations:     kind.Spec.Template.GetAnnotations(),
 		},
 		Data: decryptedData,
 		Type: v1.SecretTypeOpaque,
@@ -149,6 +151,7 @@ func buildSecret(kind secretv1beta1.KMSSecret, decryptedData map[string][]byte) 
 	return &secret
 }
 
+// decryptData decrypt data using AWS KMS.
 func decryptData(encryptedData map[string][]byte, region string) (map[string][]byte, error) {
 	svc := kms.New(session.New(), aws.NewConfig().WithRegion(region))
 	decryptedData := make(map[string][]byte)
