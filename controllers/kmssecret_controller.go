@@ -18,7 +18,14 @@ package controllers
 
 import (
 	"context"
+	"crypto/sha256"
+	"fmt"
+	"sort"
+	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/kms"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -48,6 +55,7 @@ func (r *KMSSecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
 	log := r.Log.WithValues("kmssecret", req.NamespacedName)
 
+	// An error has occur when KMSSecret is deleted.
 	log.Info("fetching KMSSecret resources")
 	kind := secretv1beta1.KMSSecret{}
 	if err := r.Client.Get(ctx, req.NamespacedName, &kind); err != nil {
@@ -56,31 +64,65 @@ func (r *KMSSecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// TODO: clean up owned resources
-
 	log = log.WithValues("secret_name", kind.Spec.Template.ObjectMeta.Name)
+
+	decryptedData, err := decryptData(kind.Spec.EncryptedData, kind.Spec.Region)
+	if err != nil {
+		log.Error(err, "failed to decrypt data")
+
+		return ctrl.Result{}, err
+	}
+
+	shasum := shasumData(decryptedData)
 
 	log.Info("checking if an existing Secret exists for this resource")
 	secret := v1.Secret{}
-	err := r.Client.Get(ctx, client.ObjectKey{Namespace: kind.Namespace, Name: kind.Spec.Template.ObjectMeta.Name}, &secret)
+	err = r.Client.Get(ctx, client.ObjectKey{Namespace: kind.Namespace, Name: kind.Spec.Template.ObjectMeta.Name}, &secret)
+
+	// Create a new Secret if there is no secret associated with KMSSecret.
 	if apierrors.IsNotFound(err) {
 		log.Info("could not find existing Secret for KMSSecret, creating one...")
 
-		secret = *buildSecret(kind)
-		if err := r.Client.Create(ctx, &secret); err != nil {
+		secret := buildSecret(kind, decryptedData)
+		if err := r.Client.Create(ctx, secret); err != nil {
 			log.Error(err, "failed to create Secret resource")
 			return ctrl.Result{}, err
 		}
 
-		r.Recorder.Eventf(&kind, v1.EventTypeNormal, "Created Secret %q", secret.Name)
+		r.Recorder.Eventf(&kind, v1.EventTypeNormal, "Created", "Created Secret %q", secret.Name)
 		log.Info("created Secret resource for KMSSecret")
+
+		kind.Status.SecretsSum = shasum
+		if err := r.Client.Update(ctx, &kind); err != nil {
+			log.Error(err, "failed to update KMSSecret status")
+			return ctrl.Result{}, err
+		}
+		log.Info("updated KMSSecret resource status")
+
 		return ctrl.Result{}, nil
 	}
 	if err != nil {
 		log.Error(err, "failed to get Secret for KMSSecret resource")
 		return ctrl.Result{}, err
 	}
-	// TODO: sync state
+
+	// Check status and update secret if there are differences.
+	if kind.Status.SecretsSum != shasum {
+		log.Info("encryptedData is updated, so updating secret resource", "old_secrets_sum", kind.Status.SecretsSum)
+		secret := buildSecret(kind, decryptedData)
+		if err := r.Client.Update(ctx, secret); err != nil {
+			log.Error(err, "failed to update Secret resource")
+			return ctrl.Result{}, err
+		}
+		r.Recorder.Eventf(&kind, v1.EventTypeNormal, "Updated", "Updated Secret %q", secret.Name)
+		log.Info("updated Secret resource for KMSSecret")
+
+		kind.Status.SecretsSum = shasum
+		if err := r.Client.Update(ctx, &kind); err != nil {
+			log.Error(err, "failed to update KMSSecret status")
+			return ctrl.Result{}, err
+		}
+	}
 
 	log.Info("resource status synced")
 
@@ -94,15 +136,48 @@ func (r *KMSSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func buildSecret(kind secretv1beta1.KMSSecret) *v1.Secret {
+func buildSecret(kind secretv1beta1.KMSSecret, decryptedData map[string][]byte) *v1.Secret {
 	secret := v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            kind.Spec.Template.ObjectMeta.Name,
 			Namespace:       kind.Namespace,
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(&kind, secretv1beta1.GroupVersion.WithKind("KMSSecret"))},
 		},
-		Data: kind.Spec.EncryptedData,
+		Data: decryptedData,
 		Type: v1.SecretTypeOpaque,
 	}
 	return &secret
+}
+
+func decryptData(encryptedData map[string][]byte, region string) (map[string][]byte, error) {
+	svc := kms.New(session.New(), aws.NewConfig().WithRegion(region))
+	decryptedData := make(map[string][]byte)
+	for key, value := range encryptedData {
+		input := &kms.DecryptInput{
+			CiphertextBlob: value,
+		}
+		decrypted, err := svc.Decrypt(input)
+		if err != nil {
+			return nil, err
+		}
+		decryptedData[key] = decrypted.Plaintext
+	}
+	return decryptedData, nil
+}
+
+func shasumData(data map[string][]byte) string {
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	values := make([]string, 0, len(data))
+	for _, k := range keys {
+		values = append(values, string(data[k]))
+	}
+	raw := strings.Join(keys, ",") + ":" + strings.Join(values, ",")
+	sum := sha256.Sum256([]byte(raw))
+	return fmt.Sprintf("%x", sum)
+
 }
