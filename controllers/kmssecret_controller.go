@@ -64,7 +64,7 @@ func (r *KMSSecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	log = log.WithValues("secret_name", kind.Spec.Template.ObjectMeta.Name)
+	log = log.WithValues("secret_name", kind.Name)
 
 	decryptedData, err := decryptData(kind.Spec.EncryptedData, kind.Spec.Region)
 	if err != nil {
@@ -77,7 +77,7 @@ func (r *KMSSecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	log.Info("checking if an existing Secret exists for this resource")
 	secret := v1.Secret{}
-	err = r.Client.Get(ctx, client.ObjectKey{Namespace: kind.Namespace, Name: kind.Spec.Template.ObjectMeta.Name}, &secret)
+	err = r.Client.Get(ctx, client.ObjectKey{Namespace: kind.Namespace, Name: kind.Name}, &secret)
 
 	// Create a new Secret if there is no secret associated with KMSSecret.
 	if apierrors.IsNotFound(err) {
@@ -139,9 +139,11 @@ func (r *KMSSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func buildSecret(kind secretv1beta1.KMSSecret, decryptedData map[string][]byte) *v1.Secret {
 	secret := v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            kind.Spec.Template.ObjectMeta.Name,
+			Name:            kind.Name,
 			Namespace:       kind.Namespace,
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(&kind, secretv1beta1.GroupVersion.WithKind("KMSSecret"))},
+			Labels:          kind.Spec.Template.GetLabels(),
+			Annotations:     kind.Spec.Template.GetAnnotations(),
 		},
 		Data: decryptedData,
 		Type: v1.SecretTypeOpaque,
@@ -149,6 +151,7 @@ func buildSecret(kind secretv1beta1.KMSSecret, decryptedData map[string][]byte) 
 	return &secret
 }
 
+// decryptData decrypt data using AWS KMS.
 func decryptData(encryptedData map[string][]byte, region string) (map[string][]byte, error) {
 	svc := kms.New(session.New(), aws.NewConfig().WithRegion(region))
 	decryptedData := make(map[string][]byte)
