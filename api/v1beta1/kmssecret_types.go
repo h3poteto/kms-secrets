@@ -22,16 +22,20 @@ import (
 
 // SecretTemplateSpec defines the secret metadata
 type SecretTemplateSpec struct {
-	// +optional
+	// +kubebuilder:validation:Required
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 }
 
 // KMSSecretSpec defines the desired state of KMSSecret
 type KMSSecretSpec struct {
-	// +optional
-	Template SecretTemplateSpec `json:"template,omitempty"`
+	// +kubebuilder:validation:Required
+	Template SecretTemplateSpec `json:"template"`
 
+	// +kubebuilder:validation:Required
 	EncryptedData map[string][]byte `json:"encryptedData"`
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Type:=string
+	Region string `json:"region"`
 }
 
 // KMSSecretStatus defines the observed state of KMSSecret
