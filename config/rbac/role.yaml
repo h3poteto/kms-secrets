@@ -16,7 +16,7 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - secret
+  - secrets
   verbs:
   - create
   - delete
@@ -24,6 +24,7 @@ rules:
   - list
   - patch
   - update
+  - watch
 - apiGroups:
   - secret.h3poteto.dev
   resources:
