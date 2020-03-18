@@ -153,7 +153,10 @@ func buildSecret(kind secretv1beta1.KMSSecret, decryptedData map[string][]byte) 
 
 // decryptData decrypt data using AWS KMS.
 func decryptData(encryptedData map[string][]byte, region string) (map[string][]byte, error) {
-	svc := kms.New(session.New(), aws.NewConfig().WithRegion(region))
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+	svc := kms.New(sess, aws.NewConfig().WithRegion(region))
 	decryptedData := make(map[string][]byte)
 	for key, value := range encryptedData {
 		input := &kms.DecryptInput{
