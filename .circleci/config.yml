@@ -21,3 +21,49 @@ jobs:
       - run:
           name: Test
           command: ginkgo -r ./
+
+  create_latest_image:
+    machine: true
+    steps:
+      - checkout
+      - run:
+          name: Docker build
+          command: |
+            docker build -t h3poteto/kms-secrets:latest .
+      - run:
+          name: push
+          command: |
+            docker login -u ${DOCKER_HUB_USER} -p ${DOCKER_HUB_PASSWORD}
+            docker push h3poteto/kms-secrets:latest
+  create_tag_image:
+    machine: true
+    steps:
+      - checkout
+      - run:
+          name: Docker build
+          command: |
+            docker build -t h3poteto/kms-secrets:${CIRCLE_TAG} .
+      - run:
+          name: push
+          command: |
+            docker login -u ${DOCKER_HUB_USER} -p ${DOCKER_HUB_PASSWORD}
+            docker push h3poteto/kms-secrets:${CIRCLE_TAG}
+
+workflows:
+  version: 2
+  build_and_push:
+    jobs:
+      - build
+      - create_latest_image:
+          filters:
+            branches:
+              only:
+                - master
+          requires:
+            - build
+      - create_tag_image:
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
