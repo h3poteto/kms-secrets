@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kms-secrets.name" . }}-manager
+  namespace: {{ .Values.namespace }}
+  labels:
+    control-plane: controller-manager
+spec:
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+      labels:
+        control-plane: controller-manager
+    spec:
+      serviceAccountName: {{ include "kms-secrets.serviceAccountName" . }}
+      securityContext:
+        # We have to specify groupID to mount IRSA volumes.
+        # https://github.com/GoogleContainerTools/distroless/blob/b54513ef989c81d68cb27d9c7958697e2fedd2c4/base/base.bzl#L8
+        fsGroup: 65532
+      containers:
+      - command:
+        - /manager
+        args:
+        - --enable-leader-election
+        image: "{{ .Values.manager.image.repository }}:{{ .Values.manager.image.tag }}"
+        name: manager
+        resources:
+          limits:
+            cpu: 100m
+            memory: 30Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
+      terminationGracePeriodSeconds: 10

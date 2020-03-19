@@ -1,0 +1,14 @@
+namespace: "kube-system"
+
+nameOverride: ""
+
+manager:
+  image:
+    repository: h3poteto/kms-secrets
+    tag: v0.1.0
+
+rbac:
+  create: true
+  serviceAccount:
+    name: manager
+    annotations: {}
