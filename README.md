@@ -90,7 +90,15 @@ type: Opaque
 
 ## How to install
 ### Helm
-TODO
+
+You can install KMS Secrets using helm:
+
+```
+$ helm repo add h3poteto-stable https://h3poteto.github.io/charts/stable
+$ helm install h3poteto-stable/kms-secrets --name kms-secrets
+```
+
+And please refer configuration on [chart repository](https://github.com/h3poteto/charts/tree/master/stable/kms-secrets).
 
 ### Kustomize
 Kustomize template is in [config](/config/default).
