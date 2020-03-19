@@ -1,0 +1,8 @@
+apiVersion: v1
+appVersion: "0.1.0"
+description: KMS Secrets Helm chart for Kubernetes
+name: kms-secrets
+version: 0.1.0
+home: https://github.com/h3poteto/kms-secrets
+sources:
+  - https://github.com/h3poteto/kms-secrets
