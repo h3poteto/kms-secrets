@@ -27,6 +27,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kms"
 	"github.com/go-logr/logr"
+	"github.com/go-yaml/yaml"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -166,9 +167,22 @@ func decryptData(encryptedData map[string][]byte, region string) (map[string][]b
 		if err != nil {
 			return nil, err
 		}
-		decryptedData[key] = decrypted.Plaintext
+		value, err = yamlParse(decrypted.Plaintext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to yaml parse: %w", err)
+		}
+		decryptedData[key] = value
+
 	}
 	return decryptedData, nil
+}
+
+func yamlParse(input []byte) ([]byte, error) {
+	var res string
+	if err := yaml.Unmarshal(input, &res); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal: %w", err)
+	}
+	return []byte(res), nil
 }
 
 func shasumData(data map[string][]byte) string {

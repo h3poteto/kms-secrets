@@ -15,3 +15,18 @@ var _ = Describe("shasumData", func() {
 		Expect(sum).To(Equal("b6b66b55b6b03c6ee6abc0027095d38a35937eb3e6ff2dc9f2aafa846c704e3b"))
 	})
 })
+
+var _ = Describe("yamlParse", func() {
+	It("yaml string should be parsed", func() {
+		input := []byte("--- apikey")
+		result, err := yamlParse(input)
+		Expect(err).Should(BeNil())
+		Expect(string(result)).To(Equal("apikey"))
+	})
+	It("string should not be changed", func() {
+		input := []byte("apikey")
+		result, err := yamlParse(input)
+		Expect(err).Should(BeNil())
+		Expect(string(result)).To(Equal("apikey"))
+	})
+})
