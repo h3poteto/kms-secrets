@@ -1,5 +1,6 @@
 [![CircleCI](https://circleci.com/gh/h3poteto/kms-secrets.svg?style=svg)](https://circleci.com/gh/h3poteto/kms-secrets)
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/h3poteto/kms-secrets)](https://github.com/h3poteto/kms-secrets/releases)
+[![Dependabot](https://img.shields.io/badge/Dependabot-enabled-blue.svg)](https://dependabot.com)
 
 # KMS Secrets
 
