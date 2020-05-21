@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"path/filepath"
+	"sync"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -29,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	secretv1beta1 "github.com/h3poteto/kms-secrets/api/v1beta1"
 	// +kubebuilder:scaffold:imports
@@ -79,3 +81,15 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
 })
+
+func StartTestManager(mgr manager.Manager) (chan struct{}, *sync.WaitGroup) {
+	stop := make(chan struct{})
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer GinkgoRecover()
+		defer wg.Done()
+		Expect(mgr.Start(stop)).NotTo(HaveOccurred())
+	}()
+	return stop, wg
+}
