@@ -20,7 +20,7 @@ jobs:
             - /go/pkg/mod
       - run:
           name: Test
-          command: ginkgo -r ./
+          command: go test ./controllers/...
 
   create_latest_image:
     machine: true
