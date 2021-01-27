@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/kms"
 )
 
+// EncryptString encrypts a string using provided KMSKeyID.
 func EncryptString(str, keyID, region string) ([]byte, error) {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,

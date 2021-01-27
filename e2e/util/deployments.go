@@ -5,6 +5,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// WaitPodRunning waits until specified pods are running.
 func WaitPodRunning(podList *corev1.PodList) (bool, error) {
 	klog.V(4).Infof("Pods are %#v", podList.Items)
 	if len(podList.Items) == 0 {
@@ -31,6 +32,7 @@ func WaitPodRunning(podList *corev1.PodList) (bool, error) {
 	return true, nil
 }
 
+// FindContainer finds a container in the pod.
 func FindContainer(pod *corev1.Pod, containerName string) *corev1.Container {
 	for i := range pod.Spec.Containers {
 		if pod.Spec.Containers[i].Name == containerName {
@@ -40,6 +42,7 @@ func FindContainer(pod *corev1.Pod, containerName string) *corev1.Container {
 	return nil
 }
 
+// FindMount finds a volume in the volumeMounts.
 func FindMount(mounts []corev1.VolumeMount, volumeName string) *corev1.VolumeMount {
 	for i := range mounts {
 		if mounts[i].Name == volumeName {
@@ -49,6 +52,7 @@ func FindMount(mounts []corev1.VolumeMount, volumeName string) *corev1.VolumeMou
 	return nil
 }
 
+// FindVolume finds a volume in the volumes.
 func FindVolume(volumes []corev1.Volume, volumeName string) *corev1.Volume {
 	for i := range volumes {
 		if volumes[i].Name == volumeName {

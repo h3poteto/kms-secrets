@@ -8,15 +8,20 @@ import (
 )
 
 const (
-	ManagerName          = "manager"
-	ManagerPodLabelKey   = "operator.h3poteto.dev"
+	// ManagerName is container name of manager.
+	ManagerName = "manager"
+	// ManagerPodLabelKey is label key for ManagerPodLabels.
+	ManagerPodLabelKey = "operator.h3poteto.dev"
+	// ManagerPodLabelValue is label value for ManagerPodLabels.
 	ManagerPodLabelValue = "control-plane"
 )
 
+// ManagerPodLabels is label for generated manager Pods. This label is used in e2e tests when find generated Pods.
 var ManagerPodLabels = map[string]string{
 	ManagerPodLabelKey: ManagerPodLabelValue,
 }
 
+// NewManagerManifests generates ServiceAccount and Deployment manifests.
 func NewManagerManifests(ns, sa, image, region, accessKey, secretKey string) (*corev1.ServiceAccount, *appsv1.Deployment) {
 	return serviceAccount(ns, sa), deployment(ns, sa, image, region, accessKey, secretKey)
 }

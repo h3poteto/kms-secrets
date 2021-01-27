@@ -7,14 +7,18 @@ import (
 )
 
 const (
-	SecretLabelKey   = "secret.h3poteto.dev"
+	// SecretLabelKey is label key for SecretLabels.
+	SecretLabelKey = "secret.h3poteto.dev"
+	// SecretLabelValue is label value for SecretLabels.
 	SecretLabelValue = "secret"
 )
 
+// SecretLabels is label for generated Secrets. This label is used in tests when find generated resources.
 var SecretLabels = map[string]string{
 	SecretLabelKey: SecretLabelValue,
 }
 
+// NewKMSSecret generates KMSSecret resource.
 func NewKMSSecret(ns, name, region string, data map[string][]byte) *secretv1beta1.KMSSecret {
 	return kmssecret(ns, name, region, data)
 }
