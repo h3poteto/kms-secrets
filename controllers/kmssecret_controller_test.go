@@ -34,6 +34,7 @@ CASE:
 	for _, c := range cases {
 		input := []byte(c.input)
 		result, err := yamlParse(input)
+
 		if err != nil {
 			t.Error(err)
 			continue CASE
