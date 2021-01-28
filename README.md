@@ -1,4 +1,6 @@
-[![CircleCI](https://circleci.com/gh/h3poteto/kms-secrets.svg?style=svg)](https://circleci.com/gh/h3poteto/kms-secrets)
+[![Build](https://github.com/h3poteto/kms-secrets/workflows/Build/badge.svg)](https://github.com/h3poteto/kms-secrets/actions?query=workflow%3ABuild+branch%3Amaster)
+[![E2E](https://github.com/h3poteto/kms-secrets/workflows/E2E/badge.svg)](https://github.com/h3poteto/kms-secrets/actions?query=workflow%3AE2E+branch%3Amaster)
+[![Docker](https://github.com/h3poteto/kms-secrets/workflows/Docker/badge.svg)](https://github.com/h3poteto/kms-secrets/actions?query=workflow%3ADocker+branch%3Amaster)
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/h3poteto/kms-secrets)](https://github.com/h3poteto/kms-secrets/releases)
 [![Dependabot](https://img.shields.io/badge/Dependabot-enabled-blue.svg)](https://dependabot.com)
 
