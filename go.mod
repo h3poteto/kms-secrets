@@ -7,7 +7,7 @@ require (
 	github.com/go-logr/logr v0.4.0
 	github.com/go-yaml/yaml v2.1.0+incompatible
 	github.com/gophercloud/gophercloud v0.1.0 // indirect
-	github.com/onsi/ginkgo v1.15.0
+	github.com/onsi/ginkgo v1.15.1
 	github.com/onsi/gomega v1.10.5
 	k8s.io/api v0.20.2
 	k8s.io/apimachinery v0.20.2
