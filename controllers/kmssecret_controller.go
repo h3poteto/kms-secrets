@@ -49,8 +49,8 @@ type KMSSecretReconciler struct {
 
 // +kubebuilder:rbac:groups=secret.h3poteto.dev,resources=kmssecrets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=secret.h3poteto.dev,resources=kmssecrets/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
+// +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
 
 func (r *KMSSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("kmssecret", req.NamespacedName)

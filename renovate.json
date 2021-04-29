@@ -1,0 +1,25 @@
+{
+  "extends": [
+    "config:base"
+  ],
+  "packageRules": [
+    {
+      "groupName": "k8s.io (major or minor)",
+      "matchPackageNames": [
+        "k8s.io/api",
+        "k8s.io/apimachinery",
+        "k8s.io/client-go"
+      ],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
+    },
+    {
+      "groupName": "sigs.k8s.io/controller-runtime (major or minor)",
+      "matchPackageNames": [
+        "sigs.k8s.io/controller-runtime"
+      ],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
+    }
+  ]
+}
