@@ -8,7 +8,7 @@ require (
 	github.com/go-yaml/yaml v2.1.0+incompatible
 	github.com/h3poteto/controller-klog v0.1.1
 	github.com/onsi/ginkgo v1.16.4
-	github.com/onsi/gomega v1.10.5
+	github.com/onsi/gomega v1.13.0
 	k8s.io/api v0.20.2
 	k8s.io/apimachinery v0.20.2
 	k8s.io/client-go v0.20.2
