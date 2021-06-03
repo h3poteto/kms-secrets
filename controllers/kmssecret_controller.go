@@ -28,7 +28,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/kms"
 	"github.com/go-logr/logr"
 	"github.com/go-yaml/yaml"
-	v1 "k8s.io/api/core/v1"
+	"github.com/h3poteto/controller-klog/pkg/ctrklog"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -53,78 +54,77 @@ type KMSSecretReconciler struct {
 // +kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
 
 func (r *KMSSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("kmssecret", req.NamespacedName)
-
+	ctx = ctrklog.SetController(ctx, "kmssecret")
 	// An error has occur when KMSSecret is deleted.
-	log.Info("fetching KMSSecret resources")
+	ctrklog.Info(ctx, "fetching KMSSecret resources")
+
 	kind := secretv1beta1.KMSSecret{}
 	if err := r.Client.Get(ctx, req.NamespacedName, &kind); err != nil {
-		log.Error(err, "failed to get KMSSecret resources")
-
+		ctrklog.Errorf(ctx, "failed to get KMSSecret: %v", err)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	log = log.WithValues("secret_name", kind.Name)
+	ctx = ctrklog.SetObject(ctx, kind.Name)
 
-	decryptedData, err := decryptData(kind.Spec.EncryptedData, kind.Spec.Region)
+	decryptedData, err := decryptData(ctx, kind.Spec.EncryptedData, kind.Spec.Region)
 	if err != nil {
-		log.Error(err, "failed to decrypt data")
+		ctrklog.Errorf(ctx, "failed to decrypt data: %v", err)
 
 		return ctrl.Result{}, err
 	}
 
 	shasum := shasumData(decryptedData)
 
-	log.Info("checking if an existing Secret exists for this resource")
-	secret := v1.Secret{}
+	ctrklog.Info(ctx, "checking if an existing Secret for this resource")
+	secret := corev1.Secret{}
 	err = r.Client.Get(ctx, client.ObjectKey{Namespace: kind.Namespace, Name: kind.Name}, &secret)
 
 	// Create a new Secret if there is no secret associated with KMSSecret.
 	if apierrors.IsNotFound(err) {
-		log.Info("could not find existing Secret for KMSSecret, creating one...")
+		ctrklog.Info(ctx, "could not find existing Secret for KMSSecret, creating one...")
 
 		secret := buildSecret(kind, decryptedData)
 		if err := r.Client.Create(ctx, secret); err != nil {
-			log.Error(err, "failed to create Secret resource")
+			ctrklog.Errorf(ctx, "failed to create Secret %s/%s: %v", secret.Namespace, secret.Name, err)
 			return ctrl.Result{}, err
 		}
 
-		r.Recorder.Eventf(&kind, v1.EventTypeNormal, "Created", "Created Secret %q", secret.Name)
-		log.Info("created Secret resource for KMSSecret")
+		r.Recorder.Eventf(&kind, corev1.EventTypeNormal, "Created", "Created Secret %s/%s", secret.Namespace, secret.Name)
+		ctrklog.Infof(ctx, "created Secret %s/%s", secret.Namespace, secret.Name)
 
 		kind.Status.SecretsSum = shasum
 		if err := r.Client.Update(ctx, &kind); err != nil {
-			log.Error(err, "failed to update KMSSecret status")
+			ctrklog.Errorf(ctx, "failed to update KMSSecret %s/%s: %v", kind.Namespace, kind.Name, err)
 			return ctrl.Result{}, err
 		}
-		log.Info("updated KMSSecret resource status")
+		ctrklog.Infof(ctx, "updated KMSSecret resource status %s/%s", kind.Namespace, kind.Name)
 
 		return ctrl.Result{}, nil
 	}
 	if err != nil {
-		log.Error(err, "failed to get Secret for KMSSecret resource")
+		ctrklog.Errorf(ctx, "failed to get Secret for KMSSecret %s/%s: %v", kind.Namespace, kind.Name, err)
 		return ctrl.Result{}, err
 	}
 
 	// Check status and update secret if there are differences.
 	if kind.Status.SecretsSum != shasum {
-		log.Info("encryptedData is updated, so updating secret resource", "old_secrets_sum", kind.Status.SecretsSum)
+		ctrklog.Infof(ctx, "encryptedData is updated, so updating secret resource", "old_secrets_sum", kind.Status.SecretsSum)
 		secret := buildSecret(kind, decryptedData)
 		if err := r.Client.Update(ctx, secret); err != nil {
-			log.Error(err, "failed to update Secret resource")
+			ctrklog.Errorf(ctx, "failed to update Secret %s/%s: %v", secret.Namespace, secret.Name, err)
 			return ctrl.Result{}, err
 		}
-		r.Recorder.Eventf(&kind, v1.EventTypeNormal, "Updated", "Updated Secret %q", secret.Name)
-		log.Info("updated Secret resource for KMSSecret")
+		r.Recorder.Eventf(&kind, corev1.EventTypeNormal, "Updated", "Updated Secret %s/%s", secret.Namespace, secret.Name)
+		ctrklog.Info(ctx, "updated Secret %s/%s", secret.Namespace, secret.Name)
 
 		kind.Status.SecretsSum = shasum
 		if err := r.Client.Update(ctx, &kind); err != nil {
-			log.Error(err, "failed to update KMSSecret status")
+			ctrklog.Errorf(ctx, "failed to update KMSSecret %s/%s: %v", kind.Namespace, kind.Name, err)
 			return ctrl.Result{}, err
 		}
 	}
 
-	log.Info("resource status synced")
+	ctrklog.Info(ctx, "resource status synced")
 
 	return ctrl.Result{}, nil
 }
@@ -132,12 +132,12 @@ func (r *KMSSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *KMSSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&secretv1beta1.KMSSecret{}).
-		Owns(&v1.Secret{}).
+		Owns(&corev1.Secret{}).
 		Complete(r)
 }
 
-func buildSecret(kind secretv1beta1.KMSSecret, decryptedData map[string][]byte) *v1.Secret {
-	secret := v1.Secret{
+func buildSecret(kind secretv1beta1.KMSSecret, decryptedData map[string][]byte) *corev1.Secret {
+	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            kind.Name,
 			Namespace:       kind.Namespace,
@@ -146,13 +146,13 @@ func buildSecret(kind secretv1beta1.KMSSecret, decryptedData map[string][]byte) 
 			Annotations:     kind.Spec.Template.GetAnnotations(),
 		},
 		Data: decryptedData,
-		Type: v1.SecretTypeOpaque,
+		Type: corev1.SecretTypeOpaque,
 	}
 	return &secret
 }
 
 // decryptData decrypt data using AWS KMS.
-func decryptData(encryptedData map[string][]byte, region string) (map[string][]byte, error) {
+func decryptData(ctx context.Context, encryptedData map[string][]byte, region string) (map[string][]byte, error) {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
@@ -164,11 +164,15 @@ func decryptData(encryptedData map[string][]byte, region string) (map[string][]b
 		}
 		decrypted, err := svc.Decrypt(input)
 		if err != nil {
+			ctrklog.Errorf(ctx, "failed to decrypt: %v", err)
 			return nil, err
 		}
-		value, err = yamlParse(decrypted.Plaintext)
+		plain := decrypted.Plaintext
+		value, err = yamlParse(plain)
 		if err != nil {
-			return nil, fmt.Errorf("failed to yaml parse: %w", err)
+			ctrklog.Warningf(ctx, "failed to yaml parse for %s, so insert plain text", key)
+			decryptedData[key] = plain
+			continue
 		}
 		decryptedData[key] = value
 

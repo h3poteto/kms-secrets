@@ -139,44 +139,58 @@ var _ = Describe("E2E", func() {
 				return true, nil
 			})
 		})
+		AfterEach(func() {
+			ctx := context.Background()
+			err := k8sClient.Delete(ctx, kmsSecret)
+			if err != nil {
+				panic(err)
+			}
+		})
 		Context("Encrypted data using aws cli", func() {
-			const (
-				key   = "PASSWORD"
-				value = "my_password"
-			)
-			BeforeEach(func() {
-				keyID := os.Getenv("KMS_KEY_ID")
-				if keyID == "" {
-					panic(fmt.Errorf("KMS_KEY_ID is required"))
-				}
-				data, err := util.EncryptString(value, keyID, os.Getenv("AWS_REGION"))
-				if err != nil {
-					panic(err)
-				}
-				kmsSecret = fixtures.NewKMSSecret(ns, "test-secret", region, map[string][]byte{
-					key: data,
-				})
-			})
-			It("Secret data should be decrepted", func() {
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-				defer cancel()
-				Expect(setupError).To(BeNil())
-				res := corev1.Secret{}
-				err := wait.Poll(1*time.Second, 5*time.Minute, func() (bool, error) {
-					err := k8sClient.Get(ctx, types.NamespacedName{Namespace: kmsSecret.Namespace, Name: kmsSecret.Name}, &res)
-					if err != nil {
-						if apierrors.IsNotFound(err) {
-							return false, nil
-						}
-						klog.Error(err)
-						return false, err
+			decrypt := func(key, value, expected string) {
+				BeforeEach(func() {
+					keyID := os.Getenv("KMS_KEY_ID")
+					if keyID == "" {
+						panic(fmt.Errorf("KMS_KEY_ID is required"))
 					}
-					return true, nil
+					data, err := util.EncryptString(value, keyID, os.Getenv("AWS_REGION"))
+					if err != nil {
+						panic(err)
+					}
+					kmsSecret = fixtures.NewKMSSecret(ns, "test-secret", region, map[string][]byte{
+						key: data,
+					})
 				})
-				Expect(err).To(BeNil())
-				val, ok := res.Data[key]
-				Expect(ok).To(BeTrue())
-				Expect(string(val)).To(Equal(value))
+				It("Secret data should be decrepted", func() {
+					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+					defer cancel()
+					Expect(setupError).To(BeNil())
+					res := corev1.Secret{}
+					err := wait.Poll(1*time.Second, 5*time.Minute, func() (bool, error) {
+						err := k8sClient.Get(ctx, types.NamespacedName{Namespace: kmsSecret.Namespace, Name: kmsSecret.Name}, &res)
+						if err != nil {
+							if apierrors.IsNotFound(err) {
+								return false, nil
+							}
+							klog.Error(err)
+							return false, err
+						}
+						return true, nil
+					})
+					Expect(err).To(BeNil())
+					val, ok := res.Data[key]
+					Expect(ok).To(BeTrue())
+					Expect(string(val)).To(Equal(expected))
+				})
+			}
+			Context("Value is plain text", func() {
+				decrypt("api_key", "hogehoge", "hogehoge")
+			})
+			Context("Value is yaml object", func() {
+				decrypt("api_key", "hoge: fuga", "hoge: fuga")
+			})
+			Context("Value is yaml formatted text", func() {
+				decrypt("api_key", "--- hogehoge", "hogehoge")
 			})
 		})
 	})
