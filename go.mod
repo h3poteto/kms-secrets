@@ -5,7 +5,7 @@ go 1.15
 require (
 	github.com/aws/aws-sdk-go v1.37.32
 	github.com/go-logr/logr v0.4.0
-	github.com/go-yaml/yaml v2.1.0+incompatible
+	github.com/go-yaml/yaml v2.4.0+incompatible
 	github.com/h3poteto/controller-klog v0.1.1
 	github.com/onsi/ginkgo v1.15.0
 	github.com/onsi/gomega v1.10.5
