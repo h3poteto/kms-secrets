@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '^1.15.0'
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Testing
         run: |
           go mod download
