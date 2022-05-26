@@ -3,7 +3,7 @@ module github.com/h3poteto/kms-secrets
 go 1.16
 
 require (
-	github.com/aws/aws-sdk-go v1.38.53
+	github.com/aws/aws-sdk-go v1.44.22
 	github.com/go-logr/logr v0.4.0
 	github.com/go-yaml/yaml v2.1.0+incompatible
 	github.com/h3poteto/controller-klog v0.1.1
