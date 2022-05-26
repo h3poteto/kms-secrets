@@ -10,7 +10,7 @@ import (
 	"github.com/h3poteto/kms-secrets/e2e/fixtures"
 	"github.com/h3poteto/kms-secrets/e2e/util"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -26,72 +26,82 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+var (
+	cfg        *rest.Config
+	kubeClient *kubernetes.Clientset
+)
+
+var _ = BeforeSuite(func() {
+	// Deploy operator controller
+	configfile := os.Getenv("KUBECONFIG")
+	if configfile == "" {
+		configfile = "$HOME/.kube/config"
+	}
+	var err error
+	cfg, err = clientcmd.BuildConfigFromFlags("", os.ExpandEnv(configfile))
+	Expect(err).ShouldNot(HaveOccurred())
+	kubeClient, err = kubernetes.NewForConfig(cfg)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = waitUntilReady(context.Background(), kubeClient)
+	Expect(err).ShouldNot(HaveOccurred())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	err = applyCRD(ctx, cfg)
+	Expect(err).ShouldNot(HaveOccurred())
+	klog.Info("applying RBAC")
+	err = util.ApplyRBAC(ctx, cfg)
+	Expect(err).ShouldNot(HaveOccurred())
+	// Apply manager
+	klog.Info("applying manager")
+	err = applyManager(ctx, kubeClient, "default")
+	Expect(err).ShouldNot(HaveOccurred())
+
+	DeferCleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
+		_ = deleteManager(ctx, kubeClient, "default")
+		_ = util.DeleteRBAC(ctx, cfg)
+		_ = util.DeleteCRD(ctx, cfg)
+	})
+})
+
+func nodeIsReady(node *corev1.Node) bool {
+	for i := range node.Status.Conditions {
+		con := &node.Status.Conditions[i]
+		if con.Type == corev1.NodeReady && con.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
+}
+
+func waitUntilReady(ctx context.Context, client *kubernetes.Clientset) error {
+	klog.Info("Waiting until kubernetes cluster is ready")
+	err := wait.PollImmediate(10*time.Second, 10*time.Minute, func() (bool, error) {
+		nodeList, err := client.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return false, fmt.Errorf("failed to list nodes: %v", err)
+		}
+		if len(nodeList.Items) == 0 {
+			klog.Warningf("node does not exist yet")
+			return false, nil
+		}
+		for i := range nodeList.Items {
+			n := &nodeList.Items[i]
+			if !nodeIsReady(n) {
+				klog.Warningf("node %s is not ready yet", n.Name)
+				return false, nil
+			}
+		}
+		klog.Info("all nodes are ready")
+		return true, nil
+	})
+	return err
+}
+
 var _ = Describe("E2E", func() {
-	var (
-		cfg *rest.Config
-	)
-	BeforeSuite(func() {
-		// Deploy operator controller
-		configfile := os.Getenv("KUBECONFIG")
-		if configfile == "" {
-			configfile = "$HOME/.kube/config"
-		}
-		restConfig, err := clientcmd.BuildConfigFromFlags("", os.ExpandEnv(configfile))
-		if err != nil {
-			panic(err)
-		}
-		cfg = restConfig
-
-		client, err := kubernetes.NewForConfig(restConfig)
-		if err != nil {
-			panic(err)
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-
-		if err := applyCRD(ctx, restConfig); err != nil {
-			panic(err)
-		}
-		klog.Info("applying RBAC")
-		if err := util.ApplyRBAC(ctx, restConfig); err != nil {
-			panic(err)
-		}
-
-		// Apply manager
-		klog.Info("applying manager")
-		if err := applyManager(ctx, client, "default"); err != nil {
-			panic(err)
-		}
-	})
-	AfterSuite(func() {
-		// Delete operator controller and custom resources
-		configfile := os.Getenv("KUBECONFIG")
-		if configfile == "" {
-			configfile = "$HOME/.kube/config"
-		}
-		restConfig, err := clientcmd.BuildConfigFromFlags("", os.ExpandEnv(configfile))
-		if err != nil {
-			panic(err)
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-
-		client, err := kubernetes.NewForConfig(restConfig)
-		if err != nil {
-			panic(err)
-		}
-
-		if err := deleteManager(ctx, client, "default"); err != nil {
-			klog.Error(err)
-		}
-		if err := util.DeleteRBAC(ctx, restConfig); err != nil {
-			klog.Error(err)
-		}
-		if err := util.DeleteCRD(ctx, restConfig); err != nil {
-			klog.Error(err)
-		}
-	})
 	Describe("Secrets are created", func() {
 		var (
 			k8sClient  client.Client
