@@ -23,6 +23,7 @@ import (
 // SecretTemplateSpec defines the secret metadata
 type SecretTemplateSpec struct {
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 }
 
