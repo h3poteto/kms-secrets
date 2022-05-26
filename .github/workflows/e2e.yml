@@ -37,7 +37,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v3
         with:
-          go-version: '^1.15.0'
+          go-version: '^1.17.0'
       - uses: actions/checkout@v3
       - uses: engineerd/setup-kind@v0.5.0
         with:
