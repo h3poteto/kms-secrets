@@ -7,7 +7,7 @@ require (
 	github.com/go-logr/logr v1.2.0
 	github.com/h3poteto/controller-klog v0.1.1
 	github.com/onsi/ginkgo/v2 v2.2.0
-	github.com/onsi/gomega v1.20.1
+	github.com/onsi/gomega v1.21.1
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.23.12
 	k8s.io/apimachinery v0.23.12
