@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/aws/aws-sdk-go v1.44.114
-	github.com/go-logr/logr v1.2.0
+	github.com/go-logr/logr v1.4.1
 	github.com/h3poteto/controller-klog v0.1.1
 	github.com/onsi/ginkgo/v2 v2.2.0
 	github.com/onsi/gomega v1.21.1
@@ -12,7 +12,7 @@ require (
 	k8s.io/api v0.23.12
 	k8s.io/apimachinery v0.23.12
 	k8s.io/client-go v0.23.12
-	k8s.io/klog/v2 v2.30.0
+	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
 	sigs.k8s.io/controller-runtime v0.11.2
 	sigs.k8s.io/yaml v1.3.0
