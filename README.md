@@ -8,6 +8,9 @@
 
 KMS Secrets is custom controller for Kubernetes. This controller decrypts AWS KMS encrypted data and generate Secret resources. So you can apply KMS encrypted data definitions as it is.
 
+## !Announcement
+This project has completed its role. Currently, we recommend other projects that are more convenient and easy to use, e.g. [sealed-secrets](https://github.com/bitnami-labs/sealed-secrets) or [external-secrets](https://github.com/external-secrets/external-secrets).
+
 ## Overview
 Sometimes you don't want to commit Secret resources to Git as is, because Secret has raw (base64 encoded) strings.
 This request will often occur in GitOps workflow.
